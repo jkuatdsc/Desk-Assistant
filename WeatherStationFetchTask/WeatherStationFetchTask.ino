@@ -3,10 +3,10 @@
 
 #include <Arduino.h>
 
-
 #define DEBUG_Wifi_multi  1    // set to one for print debug wifi messages
-
 #define ESP8266
+#define UPDATETIME 10000    // calender update time in milliseconds 
+#define NBR_EVENTS 2        // number of events that can be set by device -- push buttons
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -15,14 +15,11 @@
 #endif
 
 #include "HTTPSRedirect.h"
-
-
 #include <ESPHTTPClient.h>
 #include <JsonListener.h>
 #include <time.h>                       // time() ctime()
 #include <sys/time.h>                   // struct timeval
 #include <coredecls.h>                  // settimeofday_cb()
-
 #include "SSD1306Wire.h"
 #include "OLEDDisplayUi.h"
 #include "Wire.h"
@@ -33,8 +30,7 @@
 #include "DHT.h"
 #include "DebugMacros.h"
 
-
-#define TZ              3      // (utc+) TimeZone in hours
+#define TZ              3      // (utc+) TimeZone in hours    -- EAT
 #define DST_MN          0      // daylight savings time in minutes -- non for our local TZ
 
 // Setup
@@ -50,7 +46,6 @@ const int SDA_PIN = 19;
 const int SDC_PIN = 20;
 #endif
 
-
 //Open an account on https://openweathermap.org/ and get your free API key
 String OPEN_WEATHER_MAP_APP_ID = "replace with your own ID";
 String OPEN_WEATHER_MAP_LOCATION_ID = "179330";                       // Juja
@@ -65,9 +60,43 @@ const boolean IS_METRIC = true;
 const String WDAY_NAMES[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
 const String MONTH_NAMES[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
 
-/***************************
-   End Settings
- **************************/
+
+// better way of connecting to wifi access points
+// check the link below for more info :
+// https://github.com/GavinsMJ/uC-uP-Tricks-and-Cheats/tree/main/MultiWiFiConnect
+ 
+//Higher Priority networks
+const char* PKNOWN_SSID[] = {"net1"};                   
+const char* PKNOWN_PASSWORD[] = {"net1Password"};
+
+//Lower Priority Networks
+const char* KNOWN_SSID[] = {"Net2", "net3", "net4"};
+const char* KNOWN_PASSWORD[] = {"net2pass", "net3pass",  "net4pass"};
+
+// number of known networks
+const int   PKNOWN_SSID_COUNT = sizeof(PKNOWN_SSID) / sizeof(PKNOWN_SSID[0]); 
+const int   KNOWN_SSID_COUNT = sizeof(KNOWN_SSID) / sizeof(KNOWN_SSID[0]); 
+
+
+//Google Script ID
+
+const char *GScriptIdRead = "replace - me"; //replace with you gscript id for reading the calendar
+const char *GScriptIdWrite ="replace - me"; //replace with you gscript id for writing the calendar
+
+                               // 1st button creates this,, 2nd ...   :: more events can be added, just make sure theres a button to create this -- check Multiplexers
+String  possibleEvents[NBR_EVENTS] = {"Stop_Working", "Call_HOME"};  // Replace this with the events you want to create when you press the button(s)
+byte  LEDpins[NBR_EVENTS]    = {D4, D8};                             // connect LEDs to these pins or change pin number here---      2 & 15
+byte  switchPins[NBR_EVENTS] = {D0, D7};                             // connect switches to these pins or change pin number here--- 16 & 13
+bool switchPressed[NBR_EVENTS];
+boolean beat = false;
+int beatLED = 0;
+
+enum taskStatus {                         //either of three
+  none,
+  due,
+  done
+};
+
 SSD1306Wire     display(I2C_DISPLAY_ADDRESS, SDA_PIN, SDC_PIN);
 OLEDDisplayUi   ui( &display );
 
@@ -84,9 +113,7 @@ time_t now;
 
 // flag changed in the ticker function every 10 minutes
 bool readyForWeatherUpdate = false;
-
 String lastUpdate = "--";
-
 long timeSinceLastWUpdate = 0;
 
 //declaring prototypes
@@ -109,9 +136,6 @@ OverlayCallback overlays[] = { drawHeaderOverlay };
 int numberOfOverlays = 1;
 
 DHT dht = DHT(12, DHT11, 6); 
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-
  
 //Connection Settings
 const char* host = "script.google.com";
@@ -120,48 +144,6 @@ const int httpsPort = 443;
 
 unsigned long entryCalender, entryPrintStatus, entryInterrupt, heartBeatEntry, heartBeatLedEntry;
 String url;
-
-
-#define UPDATETIME 10000
-
-// better way of connecting to wifi access points
-// check the link below for more info
-// https://github.com/GavinsMJ/uC-uP-Tricks-and-Cheats/tree/main/MultiWiFiConnect
- 
-
-//Higher Priority networks
-const char* PKNOWN_SSID[] = {"net1"};                   
-const char* PKNOWN_PASSWORD[] = {"net1Password"};
-
-//Lower Priority Networks
-const char* KNOWN_SSID[] = {"Net2", "net3", "net4"};
-const char* KNOWN_PASSWORD[] = {"net2pass", "net3pass",  "net4pass"};
-
-// number of known networks
-const int   PKNOWN_SSID_COUNT = sizeof(PKNOWN_SSID) / sizeof(PKNOWN_SSID[0]); 
-const int   KNOWN_SSID_COUNT = sizeof(KNOWN_SSID) / sizeof(KNOWN_SSID[0]); 
-
-
-//Google Script ID
-
-const char *GScriptIdRead = "replace - me"; //replace with you gscript id for reading the calendar
-const char *GScriptIdWrite ="replace - me"; //replace with you gscript id for writing the calendar
- 
-
-#define NBR_EVENTS 2                 // number of events
-
-String  possibleEvents[NBR_EVENTS] = {"Stop_Working", "Call_HOME"};
-byte  LEDpins[NBR_EVENTS]    = {D4, D8};  // connect LEDs to these pins or change pin number here---      2 & 15
-byte  switchPins[NBR_EVENTS] = {D0, D7};  // connect switches to these pins or change pin number here--- 16 & 13
-bool switchPressed[NBR_EVENTS];
-boolean beat = false;
-int beatLED = 0;
-
-enum taskStatus {           //either of three
-  none,
-  due,
-  done
-};
 
 taskStatus taskStatus[NBR_EVENTS];
 HTTPSRedirect* client = nullptr;
