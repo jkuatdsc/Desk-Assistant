@@ -42,8 +42,6 @@ void getCalendar() {
 }
 
 void createEvent(String title) {
-  // Serial.println("Start Write Request");
-
   // Try to connect for a maximum of 5 times
   bool flag = false;
   for (int i = 0; i < 5; i++) {
@@ -56,6 +54,11 @@ void createEvent(String title) {
       Serial.println("Connection failed. Retrying...");
   }
   if (!flag) {
+    // display.clear();
+    // display.drawString(64, 10, "connection lost");
+    // display.drawString(64, 20, "Rebooting ...");
+    // display.display();
+    // delay(1000);
     Serial.print("Could not connect to server: ");
     Serial.println(host);
     Serial.println("Exiting...");
@@ -132,7 +135,7 @@ void drawevent(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
 
 }
 
-
+// state machine for the events that can be created by pressing the buttons
 void manageStatus() {
   for (int i = 0; i < NBR_EVENTS; i++) {
     switch (taskStatus[i]) {
