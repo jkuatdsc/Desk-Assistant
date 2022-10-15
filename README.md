@@ -13,7 +13,7 @@ deployed appscript fetches all your tasks for the day, also creates a new event 
 4. Modify the code to add the calendar id of the new calendar you created
 5. Deploy the appscript as a web app
 
-Repeat the same steps for the 'CreateEvent' code in the appscript file
+Repeat the same steps for the 'CreateEvent' code in the appscript file. You can use the same calendar id for both the web apps.
 
 Snippets of what to change in both instances.
 
@@ -48,7 +48,7 @@ Setup the cuircuit as shown in the image below
 3. Install the following libraries
     - [esp8266-oled-ssd1306](https://github.com/ThingPulse/esp8266-oled-ssd1306)
     - [esp8266-weather-station](https://github.com/ThingPulse/esp8266-weather-station)
-    - [Adafruit DHT-sensor-library](https://github.com/adafruit/DHT-sensor-library) 
+    - [DHT-sensor-library](https://github.com/adafruit/DHT-sensor-library) 
     - [json-streaming-parser](https://github.com/squix78/json-streaming-parser) 
 
 4. Modify the code to add your wifi credentials and the url of the deployed appscript
@@ -97,7 +97,9 @@ const char *GScriptIdWrite ="replace - me"; //replace with you gscript id for wr
 ```
 
 
-For custom logo visit https://javl.github.io/image2cpp/ and convert your image to c++ array
+For custom logo visit https://javl.github.io/image2cpp/ and convert your image to c++ array.
+
+The wifi credentials are set in a hierarchical manner [CHECK](https://github.com/GavinsMJ/uC-uP-Tricks-and-Cheats/tree/main/MultiWiFiConnect) for more information. 
 
 Final image of the device in action
 
